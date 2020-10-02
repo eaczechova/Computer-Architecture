@@ -2,16 +2,52 @@
 
 import sys
 
+HLT = 0b00000001
+LDI = 0b10000010
+PRN = 0b01000111
+
 class CPU:
     """Main CPU class."""
 
     def __init__(self):
         """Construct a new CPU."""
-        pass
+    self.ram = [0] * 256
+    self.reg = [0] * 8
+    self.reg[7] = 0xF4
+    self.pc = 0
+    self.halted = False
+
+
+    def ran_read(self, address): # address could be replaces with MAR
+        return self.ram[address]
+
+    def ram_write(self, val):
+        self.ram[address] = val
 
     def load(self):
         """Load a program into memory."""
+        # returns array of arguments passed via commend line
+        
+        if len(sys.argv) != 2:
+            sys.exit(1)
 
+        try: 
+        
+            with opne(sys.argv[1]) as f:
+                for line in f:
+                    comment_split = line.split("#")
+                    num = comment_split[0]
+
+                    try:
+
+                        x = int(num, 2)
+                        print("{:08b}: {:d}".format(x, x))
+                    except:
+
+                        print("Cant't convert string into number")
+
+        except:
+            print('File not found')
         address = 0
 
         # For now, we've just hardcoded a program:
@@ -62,4 +98,19 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        pass
+        while not self.halted:
+            instruction_to_execute = self.read_ram(self.pc)
+            operand_a = self.read_ram(self.pc + 1)
+            operand_b = self.read_ram(self.pc + 2)
+            self.execute_intruction(instuction_to_execute, operand_a, operand_b)
+
+    def execute_intruction(self, instruction, operand_a, operand_b):
+        if instruction == HLT:
+            self.halted = True
+            self.pc += 1
+        elif instruction == LDI:
+            self.reg[operand_a] = operand_b
+            self.pc += 3
+        elif instruction == PRN:
+            print(self.reg[operand_a]) 
+            self.pc += 2
