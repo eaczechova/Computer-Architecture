@@ -8,6 +8,8 @@ PRN = 0b01000111
 MUL = 0b10100010
 POP = 0b01000110
 PUSH = 0b01000101
+CALL = 0b01010000
+RET = 0b00010001
 
 
 SP = 7 # stack pointer
@@ -130,19 +132,39 @@ class CPU:
                 reg_b = self.ram_read(self.pc + 2)
                 self.alu("MUL", reg_a, reg_b)
                 self.pc += 3
-            elif instruction_to_execute == PUSH: # decrease the stack pointer and write the element at the top of the stack
+            elif instruction_to_execute == PUSH: 
+                # decrease the stack pointer
                 self.reg[SP] -= 1 # stack starts at very high memory address and goes downwards
                 address = self.reg[SP] # get address SP point to
                 reg_num = self.ram_read(self.pc + 1)
+                # write the value stored in register onto the stack
                 value = self.reg[reg_num]
                 self.ram_write(address, value)
                 self.pc += 2
             elif instruction_to_execute == POP: # pop element from the top of the stack
+                # save the value on top of the stack to the given register
                 value = self.ram_read(self.reg[SP])
                 reg_num = self.ram_read(self.pc + 1)
                 self.reg[reg_num] = value
+                # increment the stack pointer
                 self.reg[SP] += 1
                 self.pc += 2
+            elif instruction_to_execute == CAL:
+                # store val of next instruction to the stack
+                self.reg[SP] -= 1
+                address = self.pc + 2
+                self.ram[self.reg[SP]] = address
+                # jump to address stored in the given register
+                red_address_from = self.ram[self.pc +1]
+                address_to_jump = self.reg[red_address_from]
+                self.pc = address_to_jump
+            elif instruction_to_execute == RET:
+                # pop the most top value of the stack
+                address_to_return = self.ram[self.reg[SP]]
+                self.ram[self.reg[SP]] += 1
+                self.pc = address_to_return
+                
+
 
 
           
