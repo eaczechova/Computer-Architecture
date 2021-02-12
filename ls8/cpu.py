@@ -2,33 +2,79 @@
 
 import sys
 
+HLT = 0b00000001
+LDI = 0b10000010
+PRN = 0b01000111
+MUL = 0b10100010
+POP = 0b01000110
+PUSH = 0b01000101
+CALL = 0b01010000
+RET = 0b00010001
+
+
+SP = 7 # stack pointer
+
 class CPU:
     """Main CPU class."""
 
     def __init__(self):
         """Construct a new CPU."""
-        pass
+        self.ram = [0] * 256
+        self.reg = [0] * 8
+        self.reg[SP] = 0xF4
+        self.pc = 0
+        self.halted = False
 
-    def load(self):
+
+    def ram_read(self, address): # address could be replaces with MAR
+        return self.ram[address]
+
+    def ram_write(self, address, val):
+        self.ram[address] = val
+
+    def load(self, filename):
         """Load a program into memory."""
+        # returns array of arguments passed via commend line
+        if len(sys.argv) != 2:
+            print('incorrect number of arguments')
+            sys.exit(1)
 
         address = 0
-
+        try: 
+            with open(filename) as f:
+                
+                for line in f:
+                    line = line.split("#")
+                    num = line[0].strip() # removes trailing whitespace
+                    if num == "":
+                        continue
+                    else:
+                        try:
+                            val = int(num, 2)
+                            self.ram_write( address, val )
+                            print("works here", self.ram)
+                        except:
+                            print( 'Could not convert string to integer' )
+                    address += 1 
+        except:
+            print("Error with file")
+            sys.exit(1)
+      
         # For now, we've just hardcoded a program:
 
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
+#         program = [
+#             # From print8.ls8
+#             0b10000010, # LDI R0,8
+#             0b00000000,
+#             0b00001000,
+#             0b01000111, # PRN R0
+#             0b00000000,
+#             0b00000001, # HLT
+# 2        ]
 
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+        # for instruction in program:
+        #     self.ram[address] = instruction
+        #     address += 1
 
 
     def alu(self, op, reg_a, reg_b):
@@ -36,7 +82,12 @@ class CPU:
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
+        elif op == "SUB":
+            self.reg[reg_a] -= self.reg[reg_b]
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
+        elif op == "DIV":
+            self.reg[reg_a] /= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -62,4 +113,58 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        pass
+        while not self.halted:
+            instruction_to_execute = self.ram_read(self.pc)
+
+            if instruction_to_execute == PRN:
+                index = self.ram[self.pc + 1]
+                self.pc += 2
+            elif instruction_to_execute == LDI:
+                index = self.ram[self.pc + 1]
+                val = self.ram[self.pc + 2]
+                self.reg[index] = val
+                self.pc += 3
+            elif instruction_to_execute == HLT:
+                self.halted = True
+                self.pc += 1
+            elif instruction_to_execute == MUL:
+                reg_a = self.ram_read(self.pc + 1)
+                reg_b = self.ram_read(self.pc + 2)
+                self.alu("MUL", reg_a, reg_b)
+                self.pc += 3
+            elif instruction_to_execute == PUSH: 
+                # decrease the stack pointer
+                self.reg[SP] -= 1 # stack starts at very high memory address and goes downwards
+                address = self.reg[SP] # get address SP point to
+                reg_num = self.ram_read(self.pc + 1)
+                # write the value stored in register onto the stack
+                value = self.reg[reg_num]
+                self.ram_write(address, value)
+                self.pc += 2
+            elif instruction_to_execute == POP: # pop element from the top of the stack
+                # save the value on top of the stack to the given register
+                value = self.ram_read(self.reg[SP])
+                reg_num = self.ram_read(self.pc + 1)
+                self.reg[reg_num] = value
+                # increment the stack pointer
+                self.reg[SP] += 1
+                self.pc += 2
+            elif instruction_to_execute == CAL:
+                # store val of next instruction to the stack
+                self.reg[SP] -= 1
+                address = self.pc + 2
+                self.ram[self.reg[SP]] = address
+                # jump to address stored in the given register
+                red_address_from = self.ram[self.pc +1]
+                address_to_jump = self.reg[red_address_from]
+                self.pc = address_to_jump
+            elif instruction_to_execute == RET:
+                # pop the most top value of the stack
+                address_to_return = self.ram[self.reg[SP]]
+                self.ram[self.reg[SP]] += 1
+                self.pc = address_to_return
+                
+
+
+
+          
